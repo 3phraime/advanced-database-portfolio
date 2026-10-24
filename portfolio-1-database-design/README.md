@@ -190,6 +190,32 @@ The relational schema was implemented in PostgreSQL using the `shopsmart` databa
 
 The implementation includes primary keys, foreign keys, unique constraints, `NOT NULL` requirements, default values, and `CHECK` constraints to enforce data integrity.
 
+## 8. Reproducing the Database
+
+The ShopSmart database can be recreated in PostgreSQL using the SQL scripts in the `scripts/` directory.
+
+### Prerequisites
+
+- PostgreSQL installed and running.
+- Access to a PostgreSQL user with permission to create tables and insert records.
+- A newly created, empty database for the exercise.
+
+### Setup procedure
+
+1. Create a fresh database named `shopsmart`, or use a different database name if preferred.
+2. Connect to the new database using `psql`.
+3. Run `scripts/relational-schema.sql` to create the eight tables and their constraints.
+4. Run `scripts/sample-data.sql` to insert the sample records.
+5. Verify the inserted records using SQL queries and compare the results with the screenshots in `screenshots/`.
+
+### Important note
+
+The sample-data script assumes that the identity-generated IDs begin at their initial values and that the database tables contain no existing sample records. It references IDs explicitly when inserting related inventory, orders, order items, payments, and deliveries.
+
+Therefore, run the sample-data script only once against a freshly created schema. Do not rerun it against the existing populated database, as duplicate records or mismatched references may result.
+
+The existing development database is retained separately and does not need to be reset to follow this procedure.
+
 ### Sample Data
 
 Sample records were inserted to demonstrate how the tables work together. The database contains records for customers, product categories, products, inventory, customer orders, order items, payments, and deliveries.
