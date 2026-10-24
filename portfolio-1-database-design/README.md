@@ -149,15 +149,25 @@ The ERD marks required attributes with `NOT NULL`. During PostgreSQL implementat
 
 ## 5. Normalisation
 
-The design separates customer, category, product, inventory, order, order-item, payment, and delivery information into distinct entities to reduce unnecessary duplication and improve data integrity.
+The ShopSmart relational schema separates customer, category, product, inventory, order, order-item, payment, and delivery information into eight tables. This separation reduces unnecessary duplication and supports data integrity.
 
-- **First Normal Form (1NF):** Attributes contain individual values, and order products are stored as separate `ORDER_ITEM` rows rather than repeating product columns in an order.
-- **Second Normal Form (2NF):** Non-key attributes depend on the whole primary key. The proposed tables use single-column primary keys, so partial dependency on part of a composite key is not applicable.
-- **Third Normal Form (3NF):** Customer, category, product, inventory, payment, and delivery details are maintained in their appropriate tables rather than being unnecessarily repeated across unrelated records.
+### First Normal Form (1NF)
 
-The `unit_price_at_purchase` attribute is intentionally stored in `ORDER_ITEM` because it records the historical transaction price, which may differ from the current product price.
+The design uses individual attributes rather than repeating groups. Products purchased in an order are represented as separate rows in `ORDER_ITEM`, with each row storing one product reference, its quantity, and its purchase price.
 
-The schema will be reviewed during implementation to verify that the constraints and dependencies match the intended design.
+### Second Normal Form (2NF)
+
+The tables use single-column primary keys. Therefore, partial dependencies on part of a composite primary key do not arise. The design still requires consideration of candidate keys and functional dependencies when formally verifying normalisation.
+
+### Third Normal Form (3NF)
+
+The design separates information according to its subject. For example, category names and descriptions are stored in `CATEGORY`, while product details are stored in `PRODUCT`. Customer details are stored in `CUSTOMER`, rather than repeated in each order. This reduces unnecessary duplication and update anomalies.
+
+The schema structure is consistent with a 3NF design. A complete formal verification would document the functional dependencies and confirm that every non-key attribute depends on a candidate key, the whole key, and nothing but the key.
+
+### Historical purchase prices
+
+`ORDER_ITEM.unit_price_at_purchase` stores the price associated with an order line at the time of purchase. `PRODUCT.unit_price` stores the current product price. These attributes represent different business facts, so keeping both is intentional rather than unnecessary duplication.
 
 ## 6. Design Decisions and Limitations
 
