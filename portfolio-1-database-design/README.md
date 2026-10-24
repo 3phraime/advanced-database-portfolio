@@ -174,6 +174,35 @@ The model could be extended in future to support multiple warehouses, stock move
 
 ## 7. Implementation and Verification
 
-The next stage is to implement this relational design in PostgreSQL. The implementation will define the tables, primary and foreign keys, uniqueness constraints, required fields, and value-validation rules.
+## 7. Implementation and Verification
 
-The schema will then be tested using sample data and SQL queries. Testing will include valid relationships, duplicate values, invalid foreign-key references, and invalid prices or quantities. Results and screenshots will be added as implementation evidence after the tests have been run.
+The relational schema was implemented in PostgreSQL using the `shopsmart` database. All eight tables were created successfully: `customer`, `category`, `product`, `inventory`, `customer_order`, `order_item`, `payment`, and `delivery`.
+
+The implementation includes primary keys, foreign keys, unique constraints, `NOT NULL` requirements, default values, and `CHECK` constraints to enforce data integrity.
+
+### Sample Data
+
+Sample records were inserted to demonstrate how the tables work together. The database contains records for customers, product categories, products, inventory, customer orders, order items, payments, and deliveries.
+
+A SQL join across the customer, order, order-item, and product tables was executed successfully. The results demonstrated how customer orders can be linked to the products purchased and their quantities and purchase prices.
+
+### Constraint Testing
+
+The following invalid operations were tested in PostgreSQL:
+
+- **Price constraint:** An attempt to insert a product with a price of zero was rejected by the `CHECK` constraint.
+- **Foreign-key constraint:** An attempt to insert a product referencing a non-existent category was rejected by the foreign-key constraint.
+- **Unique constraint:** An attempt to insert a customer using an email address already registered in the database was rejected by the unique constraint.
+
+These tests demonstrate that PostgreSQL enforces the selected data-integrity rules and prevents the tested invalid records from being inserted.
+
+### Evidence
+
+Supporting SQL scripts and screenshots are organised in the following directories:
+
+- `erd/` — ERD preview and editable draw.io export.
+- `scripts/` — relational schema and sample-data SQL scripts.
+- `tests/` — constraint-test SQL script and screenshots of rejected operations.
+- `screenshots/` — table listings, table structure, sample data, and joined-query results.
+
+The evidence documents the design and implementation of the ShopSmart database. The scripts and screenshots should be reviewed together to understand the schema, the test cases, and their observed results.
