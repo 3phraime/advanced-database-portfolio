@@ -137,7 +137,7 @@ These constraints prevent duplicate values where uniqueness is required.
 
 ### NOT NULL and value validation
 
-The ERD marks required attributes with `NOT NULL`. During PostgreSQL implementation, additional `CHECK` constraints will be considered for business rules such as:
+The ERD marks required attributes with `NOT NULL`. During PostgreSQL implementation, `CHECK` constraints were added to enforce business rules such as:
 
 - `unit_price > 0`
 - `quantity > 0`
@@ -145,7 +145,7 @@ The ERD marks required attributes with `NOT NULL`. During PostgreSQL implementat
 - `reorder_level >= 0`
 - `amount >= 0`
 
-`NOT NULL` prevents missing values but does not prevent negative prices or quantities. These rules must be enforced separately.
+These constraints complement `NOT NULL`, which prevents missing values but does not independently prevent negative prices or quantities.
 
 ## 5. Normalisation
 
