@@ -1,86 +1,271 @@
-
--- ShopSmart synthetic data expansion
--- Stage 1A: Add categories without duplicating existing ones.
-
-INSERT INTO category (category_name, description)
-VALUES
-    ('Computers', 'Computers and computer accessories'),
-    ('Mobile Phones', 'Mobile phones and related accessories'),
-    ('Fashion', 'Clothing and fashion accessories'),
-    ('Health and Beauty', 'Personal care and beauty products'),
-    ('Sports and Outdoors', 'Sports equipment and outdoor products'),
-    ('Toys and Games', 'Toys, games, and recreational products'),
-    ('Office Supplies', 'Stationery and office equipment')
-ON CONFLICT (category_name) DO NOTHING
-RETURNING category_id, category_name;
+-- ============================================================
+-- ShopSmart E-commerce and Inventory Management System
+-- Sample Data Generation and Verification
+-- PostgreSQL
+--
+-- IMPORTANT:
+-- This script documents the generation workflow.
+-- Do not rerun INSERT/UPDATE/DELETE sections on the populated
+-- database without resetting to a clean schema first.
+-- ============================================================
 
 
--- Stage 1B: Add products across the available categories.
+-- ============================================================
+-- 1. GENERATE 498 ADDITIONAL ORDERS
+-- ============================================================
 
-INSERT INTO product (
-    category_id, product_name, description, unit_price, active
+INSERT INTO customer_order (customer_id, order_date, status)
+SELECT
+    c.customer_id,
+    CURRENT_TIMESTAMP - (random() * INTERVAL '365 days'),
+    (ARRAY[
+        'Pending', 'Processing', 'Shipped',
+        'Delivered', 'Cancelled'
+    ])[1 + floor(random() * 5)::INTEGER]
+FROM generate_series(1, 498) AS g(n)
+CROSS JOIN LATERAL (
+    SELECT customer_id
+    FROM customer
+    ORDER BY random()
+    LIMIT 1
+) AS c;
+
+
+-- ============================================================
+-- 2. REDISTRIBUTE GENERATED ORDERS ACROSS CUSTOMERS
+-- Preserves original orders 1 and 2.
+-- ============================================================
+
+WITH numbered_orders AS (
+    SELECT
+        order_id,
+        ROW_NUMBER() OVER (ORDER BY order_id) AS rn
+    FROM customer_order
+    WHERE order_id NOT IN (1, 2)
+),
+numbered_customers AS (
+    SELECT
+        customer_id,
+        ROW_NUMBER() OVER (ORDER BY customer_id) AS rn
+    FROM customer
+)
+UPDATE customer_order AS co
+SET customer_id = nc.customer_id
+FROM numbered_orders AS no
+JOIN numbered_customers AS nc
+    ON nc.rn = ((no.rn - 1) % (SELECT COUNT(*) FROM customer)) + 1
+WHERE co.order_id = no.order_id;
+
+
+-- ============================================================
+-- 3. GENERATE ORDER ITEMS
+-- Adds two or three items to each generated order.
+-- ============================================================
+
+INSERT INTO order_item (
+    order_id,
+    product_id,
+    quantity,
+    unit_price_at_purchase
 )
 SELECT
-    c.category_id,
-    v.product_name,
-    v.description,
-    v.unit_price,
-    TRUE
-FROM (
-    VALUES
-        ('Computers', 'Laptop Computer', 'Portable laptop computer', 450000.00),
-        ('Computers', 'Desktop Computer', 'Desktop personal computer', 520000.00),
-        ('Computers', 'USB Keyboard', 'Wired USB keyboard', 12000.00),
-        ('Computers', 'Computer Monitor', '24 inch computer monitor', 145000.00),
-        ('Computers', 'External Hard Drive', 'External data storage drive', 95000.00),
-        ('Computers', 'USB Flash Drive', '64GB USB flash drive', 15000.00),
-        ('Mobile Phones', 'Android Smartphone', 'Android mobile smartphone', 280000.00),
-        ('Mobile Phones', 'Basic Mobile Phone', 'Basic mobile phone', 35000.00),
-        ('Mobile Phones', 'Phone Charger', 'USB phone charging adapter', 8500.00),
-        ('Mobile Phones', 'Phone Case', 'Protective smartphone case', 5000.00),
-        ('Mobile Phones', 'Wireless Earbuds', 'Bluetooth wireless earbuds', 32000.00),
-        ('Fashion', 'Cotton T-Shirt', 'Cotton casual T-shirt', 7500.00),
-        ('Fashion', 'Denim Jeans', 'Casual denim jeans', 18000.00),
-        ('Fashion', 'Running Shoes', 'Everyday running shoes', 35000.00),
-        ('Fashion', 'Leather Belt', 'Casual leather belt', 9000.00),
-        ('Fashion', 'Backpack', 'Everyday backpack', 22000.00),
-        ('Health and Beauty', 'Electric Toothbrush', 'Rechargeable electric toothbrush', 28000.00),
-        ('Health and Beauty', 'Hair Dryer', 'Handheld hair dryer', 24000.00),
-        ('Health and Beauty', 'Skin Moisturiser', 'Daily skin moisturiser', 6500.00),
-        ('Health and Beauty', 'Digital Thermometer', 'Digital temperature thermometer', 7000.00),
-        ('Health and Beauty', 'First Aid Kit', 'Household first aid kit', 12000.00),
-        ('Sports and Outdoors', 'Football', 'Standard size football', 18000.00),
-        ('Sports and Outdoors', 'Yoga Mat', 'Exercise yoga mat', 14000.00),
-        ('Sports and Outdoors', 'Dumbbell Set', 'Home exercise dumbbell set', 55000.00),
-        ('Sports and Outdoors', 'Water Bottle', 'Reusable sports water bottle', 4500.00),
-        ('Sports and Outdoors', 'Camping Tent', 'Two person camping tent', 85000.00),
-        ('Toys and Games', 'Board Game', 'Family strategy board game', 16000.00),
-        ('Toys and Games', 'Building Blocks', 'Creative building block set', 12500.00),
-        ('Toys and Games', 'Remote Control Car', 'Remote controlled toy car', 27000.00),
-        ('Toys and Games', 'Puzzle Set', 'Jigsaw puzzle set', 8000.00),
-        ('Toys and Games', 'Playing Cards', 'Standard playing card deck', 2500.00),
-        ('Office Supplies', 'Notebook Pack', 'Pack of ruled notebooks', 6000.00),
-        ('Office Supplies', 'Ballpoint Pens', 'Pack of ballpoint pens', 2500.00),
-        ('Office Supplies', 'Office Chair', 'Adjustable office chair', 95000.00),
-        ('Office Supplies', 'Desk Lamp', 'LED desk lamp', 18000.00),
-        ('Office Supplies', 'Printer Paper', 'Ream of printer paper', 6500.00),
-        ('Electronics', 'Bluetooth Speaker', 'Portable Bluetooth speaker', 42000.00),
-        ('Electronics', 'Power Bank', 'Portable USB power bank', 22000.00),
-        ('Electronics', 'Surge Protector', 'Multi outlet surge protector', 15000.00),
-        ('Electronics', 'Digital Camera', 'Compact digital camera', 210000.00),
-        ('Home and Kitchen', 'Blender', 'Kitchen countertop blender', 38000.00),
-        ('Home and Kitchen', 'Microwave Oven', 'Countertop microwave oven', 125000.00),
-        ('Home and Kitchen', 'Rice Cooker', 'Electric rice cooker', 29000.00),
-        ('Home and Kitchen', 'Cookware Set', 'Multi piece cookware set', 65000.00),
-        ('Books', 'SQL Programming Guide', 'Introductory SQL programming book', 14500.00),
-        ('Books', 'Database Design Handbook', 'Relational database design book', 17500.00),
-        ('Books', 'Computer Networks Textbook', 'Computer networking textbook', 16000.00)
-) AS v(category_name, product_name, description, unit_price)
-JOIN category AS c
-    ON c.category_name = v.category_name
+    co.order_id,
+    p.product_id,
+    1 + floor(random() * 4)::INTEGER,
+    p.unit_price
+FROM customer_order AS co
+CROSS JOIN LATERAL generate_series(
+    1,
+    2 + (co.order_id % 2)
+) AS item_number(n)
+JOIN LATERAL (
+    SELECT product_id, unit_price
+    FROM product
+    ORDER BY random() * (item_number.n + co.order_id)
+    LIMIT 1
+) AS p ON TRUE
+WHERE co.order_id NOT IN (1, 2);
+
+
+-- ============================================================
+-- 4. GENERATE MISSING PAYMENT RECORDS
+-- Payment amounts are calculated from order items.
+-- ============================================================
+
+INSERT INTO payment (
+    order_id,
+    amount,
+    payment_method,
+    payment_status,
+    payment_date,
+    transaction_reference
+)
+SELECT
+    co.order_id,
+    totals.order_total,
+    (ARRAY[
+        'Card', 'Bank Transfer',
+        'Cash on Delivery', 'Mobile Payment'
+    ])[1 + floor(random() * 4)::INTEGER],
+    (ARRAY['Pending', 'Paid', 'Failed'])
+        [1 + floor(random() * 3)::INTEGER],
+    CASE
+        WHEN random() < 0.7
+        THEN co.order_date + INTERVAL '1 hour'
+        ELSE NULL
+    END,
+    'TXN-SM-' || co.order_id
+FROM customer_order AS co
+JOIN (
+    SELECT
+        order_id,
+        SUM(quantity * unit_price_at_purchase) AS order_total
+    FROM order_item
+    GROUP BY order_id
+) AS totals
+    ON totals.order_id = co.order_id
 WHERE NOT EXISTS (
     SELECT 1
-    FROM product AS existing
-    WHERE existing.product_name = v.product_name
+    FROM payment AS pay
+    WHERE pay.order_id = co.order_id
+);
+
+
+-- ============================================================
+-- 5. GENERATE DELIVERIES ONLY FOR ELIGIBLE ORDERS
+-- Requires Paid payment and non-Cancelled order status.
+-- Preserves existing delivery records.
+-- ============================================================
+
+INSERT INTO delivery (
+    order_id,
+    delivery_address,
+    delivery_status,
+    shipped_date,
+    delivered_date,
+    tracking_number
 )
-RETURNING product_id, product_name, category_id;
+SELECT
+    co.order_id,
+    c.address_line1 || ', ' || c.city ||
+        COALESCE(', ' || c.postal_code, ''),
+    CASE
+        WHEN co.status = 'Delivered' THEN 'Delivered'
+        WHEN co.status = 'Shipped' THEN 'Shipped'
+        ELSE 'Pending'
+    END,
+    CASE
+        WHEN co.status IN ('Shipped', 'Delivered')
+        THEN co.order_date + INTERVAL '1 day'
+        ELSE NULL
+    END,
+    CASE
+        WHEN co.status = 'Delivered'
+        THEN co.order_date + INTERVAL '3 days'
+        ELSE NULL
+    END,
+    'SM-TRK-' || co.order_id
+FROM customer_order AS co
+JOIN customer AS c
+    ON c.customer_id = co.customer_id
+JOIN payment AS p
+    ON p.order_id = co.order_id
+WHERE p.payment_status = 'Paid'
+  AND co.status <> 'Cancelled'
+  AND NOT EXISTS (
+      SELECT 1
+      FROM delivery AS d
+      WHERE d.order_id = co.order_id
+  );
+
+
+-- ============================================================
+-- 6. VERIFY TABLE COUNTS
+-- ============================================================
+
+SELECT 'customers' AS table_name, COUNT(*) AS total FROM customer
+UNION ALL
+SELECT 'categories', COUNT(*) FROM category
+UNION ALL
+SELECT 'products', COUNT(*) FROM product
+UNION ALL
+SELECT 'inventory', COUNT(*) FROM inventory
+UNION ALL
+SELECT 'orders', COUNT(*) FROM customer_order
+UNION ALL
+SELECT 'order_items', COUNT(*) FROM order_item
+UNION ALL
+SELECT 'payments', COUNT(*) FROM payment
+UNION ALL
+SELECT 'deliveries', COUNT(*) FROM delivery
+ORDER BY table_name;
+
+
+-- ============================================================
+-- 7. VERIFY ORDER ITEM VARIETY
+-- ============================================================
+
+SELECT
+    COUNT(*) AS total_items,
+    COUNT(DISTINCT product_id) AS distinct_products,
+    COUNT(DISTINCT order_id) AS orders_with_items
+FROM order_item;
+
+
+-- ============================================================
+-- 8. VERIFY PAYMENT COUNTS AND STATUSES
+-- ============================================================
+
+SELECT
+    payment_status,
+    COUNT(*) AS total_payments
+FROM payment
+GROUP BY payment_status
+ORDER BY payment_status;
+
+
+-- ============================================================
+-- 9. VERIFY DELIVERY RULE
+-- Expected result for the current database: 0
+-- ============================================================
+
+SELECT COUNT(*) AS deliveries_with_unpaid_or_cancelled_orders
+FROM delivery AS d
+JOIN customer_order AS co
+    ON co.order_id = d.order_id
+JOIN payment AS p
+    ON p.order_id = co.order_id
+WHERE p.payment_status <> 'Paid'
+   OR co.status = 'Cancelled';
+
+
+-- ============================================================
+-- 10. VIEW SAMPLE JOINED ORDER DATA
+-- ============================================================
+
+SELECT
+    c.customer_id,
+    c.first_name,
+    c.last_name,
+    co.order_id,
+    co.order_date,
+    co.status AS order_status,
+    p.product_name,
+    oi.quantity,
+    oi.unit_price_at_purchase,
+    oi.quantity * oi.unit_price_at_purchase AS line_total,
+    pay.payment_status,
+    d.delivery_status
+FROM customer AS c
+JOIN customer_order AS co
+    ON co.customer_id = c.customer_id
+JOIN order_item AS oi
+    ON oi.order_id = co.order_id
+JOIN product AS p
+    ON p.product_id = oi.product_id
+LEFT JOIN payment AS pay
+    ON pay.order_id = co.order_id
+LEFT JOIN delivery AS d
+    ON d.order_id = co.order_id
+ORDER BY co.order_id, oi.order_item_id
+LIMIT 50;
